@@ -4,7 +4,7 @@ import sqlite3
 from datetime import datetime
 import os
 
-# === НАСТРОЙКИ БД ===
+
 DB_NAME = "reminders.db"
 
 def get_connection():
@@ -27,7 +27,7 @@ def init_db():
     conn.commit()
     conn.close()
 
-# === ЛОГИКА ===
+
 def add_reminder():
     title = entry_title.get().strip()
     desc = text_desc.get("1.0", tk.END).strip()
@@ -49,11 +49,11 @@ def add_reminder():
     conn.commit()
     conn.close()
 
-    # Очистка полей
+
     entry_title.delete(0, tk.END)
     text_desc.delete("1.0", tk.END)
     entry_due.delete(0, tk.END)
-    # Возвращаем дефолтное время
+
     entry_due.insert(0, datetime.now().replace(hour=9, minute=0, second=0, microsecond=0).strftime("%Y-%m-%d %H:%M"))
     
     load_reminders()
@@ -79,7 +79,7 @@ def load_reminders():
         widget.destroy()
 
     conn = get_connection()
-    # Показываем только невыполненные, отсортированные по времени
+  
     reminders = conn.execute("SELECT * FROM reminders WHERE is_done = 0 ORDER BY due_time ASC").fetchall()
     conn.close()
 
@@ -102,7 +102,7 @@ def load_reminders():
         btn_frame = ttk.Frame(card)
         btn_frame.pack(anchor="e")
 
-        # Важно: используем default argument для корректного захвата переменной в lambda
+       
         ttk.Button(btn_frame, text=" Выполнено", command=lambda r=rem["id"]: mark_done(r)).pack(side="left", padx=5)
         ttk.Button(btn_frame, text=" Удалить", command=lambda r=rem["id"]: delete_reminder(r)).pack(side="left", padx=5)
 
@@ -122,19 +122,19 @@ def check_due_reminders():
             conn.close()
         load_reminders()
 
-    # Запускаем проверку снова через 10 секунд
+   
     root.after(10000, check_due_reminders)
 
-# === ИНТЕРФЕЙС ===
+
 root = tk.Tk()
 root.title("Напоминания")
 root.geometry("650x750")
 root.configure(bg="#F8F9FA")
 
-# Инициализация БД
+
 init_db()
 
-# --- Блок добавления ---
+
 input_frame = ttk.Frame(root, padding=15)
 input_frame.pack(fill="x", padx=20, pady=10)
 
@@ -160,13 +160,13 @@ entry_due.insert(0, tomorrow.strftime("%Y-%m-%d %H:%M"))
 
 ttk.Button(input_frame, text="Добавить", command=add_reminder).pack(fill="x", pady=10)
 
-# --- Блок списка ---
+
 list_frame = ttk.Frame(root, padding=15)
 list_frame.pack(fill="both", expand=True, padx=20, pady=5)
 
 ttk.Label(list_frame, text=" Мои напоминания", font=("Segoe UI", 14, "bold")).pack(anchor="w", pady=(0, 5))
 
-# Canvas + Scrollbar для прокрутки списка
+
 canvas = tk.Canvas(list_frame, bg="white", highlightthickness=0)
 scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=canvas.yview)
 scrollable_frame = ttk.Frame(canvas)
@@ -180,7 +180,7 @@ scrollbar.pack(side="right", fill="y")
 
 load_reminders()
 
-# Запуск фоновой проверки времени
+
 root.after(10000, check_due_reminders)
 
 root.mainloop()
