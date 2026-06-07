@@ -128,20 +128,20 @@ def add_reminder():
     entry_title.delete(0, tk.END)
     text_desc.delete("1.0", tk.END)
     
-    tomorrow = (datetime.now() + timedelta(days=1)).replace(hour=9, minute=0)
+    default_time = datetime.now()
     entry_due.delete(0, tk.END)
-    entry_due.insert(0, tomorrow.strftime("%Y-%m-%d %H:%M"))
+    entry_due.insert(0, default_time.strftime("%Y-%m-%d %H:%M"))
     
     spin_year.delete(0, tk.END)
-    spin_year.insert(0, str(tomorrow.year))
+    spin_year.insert(0, str(default_time.year))
     spin_month.delete(0, tk.END)
-    spin_month.insert(0, str(tomorrow.month))
+    spin_month.insert(0, str(default_time.month))
     spin_day.delete(0, tk.END)
-    spin_day.insert(0, str(tomorrow.day))
+    spin_day.insert(0, str(default_time.day))
     spin_hour.delete(0, tk.END)
-    spin_hour.insert(0, str(tomorrow.hour))
+    spin_hour.insert(0, str(default_time.hour))
     spin_min.delete(0, tk.END)
-    spin_min.insert(0, str(tomorrow.minute))
+    spin_min.insert(0, str(default_time.minute))
 
     load_reminders()
 
@@ -226,7 +226,7 @@ root.configure(bg=bg_color)
 header_frame = tk.Frame(root, bg=bg_color, padx=20, pady=10)
 header_frame.pack(fill="x")
 
-theme_btn = tk.Button(header_frame, text="️ Светлая тема", 
+theme_btn = tk.Button(header_frame, text="☀️ Светлая тема", 
                       font=('Segoe UI', 10),
                       bg=surface_color, fg=text_color,
                       activebackground=hover_color, activeforeground=text_color,
@@ -276,7 +276,7 @@ year_lbl = tk.Label(datetime_frame, text="Год:",
 year_lbl.grid(row=0, column=0, padx=5, pady=5, sticky="e")
 
 now = datetime.now()
-tomorrow_def = (now + timedelta(days=1)).replace(hour=9, minute=0)
+default_time = now
 
 spin_year = tk.Spinbox(datetime_frame, from_=now.year, to=now.year+5, width=8,
                        font=("Segoe UI", 11),
@@ -284,7 +284,7 @@ spin_year = tk.Spinbox(datetime_frame, from_=now.year, to=now.year+5, width=8,
                        highlightbackground=border_color, highlightthickness=1,
                        relief='solid')
 spin_year.delete(0, tk.END)
-spin_year.insert(0, str(tomorrow_def.year))
+spin_year.insert(0, str(default_time.year))
 spin_year.grid(row=0, column=1, padx=5, pady=5)
 
 month_lbl = tk.Label(datetime_frame, text="Месяц:", 
@@ -299,7 +299,7 @@ spin_month = tk.Spinbox(datetime_frame, from_=1, to=12, width=6,
                         relief='solid',
                         format="%02.0f")
 spin_month.delete(0, tk.END)
-spin_month.insert(0, str(tomorrow_def.month))
+spin_month.insert(0, str(default_time.month))
 spin_month.grid(row=0, column=3, padx=5, pady=5)
 
 day_lbl = tk.Label(datetime_frame, text="День:", 
@@ -314,7 +314,7 @@ spin_day = tk.Spinbox(datetime_frame, from_=1, to=31, width=6,
                       relief='solid',
                       format="%02.0f")
 spin_day.delete(0, tk.END)
-spin_day.insert(0, str(tomorrow_def.day))
+spin_day.insert(0, str(default_time.day))
 spin_day.grid(row=0, column=5, padx=5, pady=5)
 
 hour_lbl = tk.Label(datetime_frame, text="Час:", 
@@ -329,7 +329,7 @@ spin_hour = tk.Spinbox(datetime_frame, from_=0, to=23, width=6,
                        relief='solid',
                        format="%02.0f")
 spin_hour.delete(0, tk.END)
-spin_hour.insert(0, str(tomorrow_def.hour))
+spin_hour.insert(0, str(default_time.hour))
 spin_hour.grid(row=1, column=1, padx=5, pady=5)
 
 min_lbl = tk.Label(datetime_frame, text="Минуты:", 
@@ -344,7 +344,7 @@ spin_min = tk.Spinbox(datetime_frame, from_=0, to=59, width=6,
                       relief='solid',
                       format="%02.0f")
 spin_min.delete(0, tk.END)
-spin_min.insert(0, str(tomorrow_def.minute))
+spin_min.insert(0, str(default_time.minute))
 spin_min.grid(row=1, column=3, padx=5, pady=5)
 
 set_time_btn = tk.Button(datetime_frame, text="✓ Установить", 
@@ -363,7 +363,7 @@ entry_due = tk.Entry(input_container, font=("Segoe UI", 12),
 entry_due.pack(fill="x", pady=4)
 
 entry_due.config(state="normal")
-entry_due.insert(0, tomorrow_def.strftime("%Y-%m-%d %H:%M"))
+entry_due.insert(0, default_time.strftime("%Y-%m-%d %H:%M"))
 entry_due.config(state="readonly")
 
 add_btn = tk.Button(input_container, text="Добавить", 
