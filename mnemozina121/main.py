@@ -69,9 +69,37 @@ def toggle_theme():
     
     text_desc.configure(bg=surface_color, fg=text_color, insertbackground=text_color, highlightbackground=border_color)
     entry_title.configure(bg=surface_color, fg=text_color, highlightbackground=border_color)
-    entry_due.configure(bg=surface_color, fg=accent_color, highlightbackground=border_color)
+    
+    spin_year.configure(bg=surface_color, fg=text_color, highlightbackground=border_color)
+    spin_month.configure(bg=surface_color, fg=text_color, highlightbackground=border_color)
+    spin_day.configure(bg=surface_color, fg=text_color, highlightbackground=border_color)
+    spin_hour.configure(bg=surface_color, fg=text_color, highlightbackground=border_color)
+    spin_min.configure(bg=surface_color, fg=text_color, highlightbackground=border_color)
     
     load_reminders()
+
+def set_datetime():
+    try:
+        year = int(spin_year.get())
+        month = int(spin_month.get())
+        day = int(spin_day.get())
+        hour = int(spin_hour.get())
+        minute = int(spin_min.get())
+        
+        chosen_dt = datetime(year, month, day, hour, minute)
+        
+        if chosen_dt < datetime.now():
+            messagebox.showerror("Ошибка", "Нельзя установить время в прошлом!")
+            return
+        
+        formatted_time = chosen_dt.strftime("%Y-%m-%d %H:%M")
+        entry_due.config(state="normal")
+        entry_due.delete(0, tk.END)
+        entry_due.insert(0, formatted_time)
+        entry_due.config(state="readonly")
+        
+    except ValueError:
+        messagebox.showerror("Ошибка", "Некорректная дата или время!")
 
 def add_reminder():
     title = entry_title.get().strip()
@@ -103,6 +131,17 @@ def add_reminder():
     tomorrow = (datetime.now() + timedelta(days=1)).replace(hour=9, minute=0)
     entry_due.delete(0, tk.END)
     entry_due.insert(0, tomorrow.strftime("%Y-%m-%d %H:%M"))
+    
+    spin_year.delete(0, tk.END)
+    spin_year.insert(0, str(tomorrow.year))
+    spin_month.delete(0, tk.END)
+    spin_month.insert(0, str(tomorrow.month))
+    spin_day.delete(0, tk.END)
+    spin_day.insert(0, str(tomorrow.day))
+    spin_hour.delete(0, tk.END)
+    spin_hour.insert(0, str(tomorrow.hour))
+    spin_min.delete(0, tk.END)
+    spin_min.insert(0, str(tomorrow.minute))
 
     load_reminders()
 
@@ -174,24 +213,20 @@ def create_task_row(parent, reminder):
                            command=lambda r=reminder["id"]: delete_reminder(r))
     delete_btn.pack(side="right", padx=5, pady=8)
 
-# Инициализация базы данных
 init_db()
 
-# Получаем цвета для тёмной темы (по умолчанию)
 bg_color, surface_color, text_color, accent_color, border_color, hover_color = setup_theme("dark")
 
-# Создаём главное окно
 root = tk.Tk()
 root.title("Ежедневник")
-root.geometry("700x800")
+root.geometry("700x850")
 root.minsize(600, 600)
 root.configure(bg=bg_color)
 
-# Заголовок с кнопкой темы
 header_frame = tk.Frame(root, bg=bg_color, padx=20, pady=10)
 header_frame.pack(fill="x")
 
-theme_btn = tk.Button(header_frame, text="☀️ Светлая тема", 
+theme_btn = tk.Button(header_frame, text="️ Светлая тема", 
                       font=('Segoe UI', 10),
                       bg=surface_color, fg=text_color,
                       activebackground=hover_color, activeforeground=text_color,
@@ -199,7 +234,6 @@ theme_btn = tk.Button(header_frame, text="☀️ Светлая тема",
                       command=toggle_theme)
 theme_btn.pack(side="right")
 
-# Контейнер для ввода нового напоминания
 input_container = tk.Frame(root, bg=surface_color, padx=30, pady=20)
 input_container.pack(fill="x", padx=30, pady=20)
 
@@ -228,18 +262,109 @@ text_desc = tk.Text(input_container, height=3, font=("Segoe UI", 11),
                     relief='solid', highlightthickness=1, highlightbackground=border_color)
 text_desc.pack(fill="x", pady=4)
 
-time_lbl = tk.Label(input_container, text="Время (ГГГГ-ММ-ДД ЧЧ:ММ):", 
+time_lbl = tk.Label(input_container, text="Дата и время:", 
                     bg=surface_color, fg=text_color,
                     font=('Segoe UI', 11))
 time_lbl.pack(anchor="w", pady=(10, 0))
+
+datetime_frame = tk.Frame(input_container, bg=surface_color)
+datetime_frame.pack(fill="x", pady=4)
+
+year_lbl = tk.Label(datetime_frame, text="Год:", 
+                    bg=surface_color, fg=text_color,
+                    font=('Segoe UI', 10))
+year_lbl.grid(row=0, column=0, padx=5, pady=5, sticky="e")
+
+now = datetime.now()
+tomorrow_def = (now + timedelta(days=1)).replace(hour=9, minute=0)
+
+spin_year = tk.Spinbox(datetime_frame, from_=now.year, to=now.year+5, width=8,
+                       font=("Segoe UI", 11),
+                       bg=surface_color, fg=text_color,
+                       highlightbackground=border_color, highlightthickness=1,
+                       relief='solid')
+spin_year.delete(0, tk.END)
+spin_year.insert(0, str(tomorrow_def.year))
+spin_year.grid(row=0, column=1, padx=5, pady=5)
+
+month_lbl = tk.Label(datetime_frame, text="Месяц:", 
+                     bg=surface_color, fg=text_color,
+                     font=('Segoe UI', 10))
+month_lbl.grid(row=0, column=2, padx=5, pady=5, sticky="e")
+
+spin_month = tk.Spinbox(datetime_frame, from_=1, to=12, width=6,
+                        font=("Segoe UI", 11),
+                        bg=surface_color, fg=text_color,
+                        highlightbackground=border_color, highlightthickness=1,
+                        relief='solid',
+                        format="%02.0f")
+spin_month.delete(0, tk.END)
+spin_month.insert(0, str(tomorrow_def.month))
+spin_month.grid(row=0, column=3, padx=5, pady=5)
+
+day_lbl = tk.Label(datetime_frame, text="День:", 
+                   bg=surface_color, fg=text_color,
+                   font=('Segoe UI', 10))
+day_lbl.grid(row=0, column=4, padx=5, pady=5, sticky="e")
+
+spin_day = tk.Spinbox(datetime_frame, from_=1, to=31, width=6,
+                      font=("Segoe UI", 11),
+                      bg=surface_color, fg=text_color,
+                      highlightbackground=border_color, highlightthickness=1,
+                      relief='solid',
+                      format="%02.0f")
+spin_day.delete(0, tk.END)
+spin_day.insert(0, str(tomorrow_def.day))
+spin_day.grid(row=0, column=5, padx=5, pady=5)
+
+hour_lbl = tk.Label(datetime_frame, text="Час:", 
+                    bg=surface_color, fg=text_color,
+                    font=('Segoe UI', 10))
+hour_lbl.grid(row=1, column=0, padx=5, pady=5, sticky="e")
+
+spin_hour = tk.Spinbox(datetime_frame, from_=0, to=23, width=6,
+                       font=("Segoe UI", 11),
+                       bg=surface_color, fg=text_color,
+                       highlightbackground=border_color, highlightthickness=1,
+                       relief='solid',
+                       format="%02.0f")
+spin_hour.delete(0, tk.END)
+spin_hour.insert(0, str(tomorrow_def.hour))
+spin_hour.grid(row=1, column=1, padx=5, pady=5)
+
+min_lbl = tk.Label(datetime_frame, text="Минуты:", 
+                   bg=surface_color, fg=text_color,
+                   font=('Segoe UI', 10))
+min_lbl.grid(row=1, column=2, padx=5, pady=5, sticky="e")
+
+spin_min = tk.Spinbox(datetime_frame, from_=0, to=59, width=6,
+                      font=("Segoe UI", 11),
+                      bg=surface_color, fg=text_color,
+                      highlightbackground=border_color, highlightthickness=1,
+                      relief='solid',
+                      format="%02.0f")
+spin_min.delete(0, tk.END)
+spin_min.insert(0, str(tomorrow_def.minute))
+spin_min.grid(row=1, column=3, padx=5, pady=5)
+
+set_time_btn = tk.Button(datetime_frame, text="✓ Установить", 
+                         font=('Segoe UI', 9, 'bold'),
+                         bg=accent_color, fg='white',
+                         activebackground=accent_hover, activeforeground='white',
+                         relief='flat', cursor="hand2",
+                         command=set_datetime)
+set_time_btn.grid(row=1, column=4, columnspan=2, padx=10, pady=5)
+
 entry_due = tk.Entry(input_container, font=("Segoe UI", 12), 
                      bg=surface_color, fg=accent_color,
+                     state="readonly",
                      insertbackground=text_color,
                      relief='solid', highlightthickness=1, highlightbackground=border_color)
 entry_due.pack(fill="x", pady=4)
 
-tomorrow_def = (datetime.now() + timedelta(days=1)).replace(hour=9, minute=0)
+entry_due.config(state="normal")
 entry_due.insert(0, tomorrow_def.strftime("%Y-%m-%d %H:%M"))
+entry_due.config(state="readonly")
 
 add_btn = tk.Button(input_container, text="Добавить", 
                     font=('Segoe UI', 10, 'bold'),
@@ -249,7 +374,6 @@ add_btn = tk.Button(input_container, text="Добавить",
                     command=add_reminder)
 add_btn.pack(fill="x", pady=15)
 
-# Список напоминаний
 list_frame = tk.Frame(root, bg=bg_color)
 list_frame.pack(fill="both", expand=True)
 
@@ -270,8 +394,6 @@ def _on_mousewheel(event):
     canvas.yview_scroll(int(-1*(event.delta/120)), "units")
 canvas.bind_all("<MouseWheel>", _on_mousewheel)
 
-# Загружаем напоминания
 load_reminders()
 
-# Запускаем главное окно
 root.mainloop()
