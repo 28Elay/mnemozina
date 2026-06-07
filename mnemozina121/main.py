@@ -1,11 +1,35 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import sqlite3
-from datetime import datetime
-import os
-
+from datetime import datetime, timedelta
 
 DB_NAME = "reminders.db"
+
+current_theme = "dark"
+accent_hover = "#2563EB"
+
+def setup_theme(theme_name="dark"):
+    global current_theme, accent_hover
+    current_theme = theme_name
+    
+    if theme_name == "dark":
+        bg_color = "#121212"
+        surface_color = "#1E1E1E"
+        text_color = "#E0E0E0"
+        accent_color = "#3B82F6"
+        accent_hover = "#2563EB"
+        border_color = "#374151"
+        hover_color = "#2D2D2D"
+    else:
+        bg_color = "#F3F4F6"
+        surface_color = "#FFFFFF"
+        text_color = "#1F2937"
+        accent_color = "#3B82F6"
+        accent_hover = "#2563EB"
+        border_color = "#D1D5DB"
+        hover_color = "#E5E7EB"
+    
+    return bg_color, surface_color, text_color, accent_color, border_color, hover_color
 
 def get_connection():
     conn = sqlite3.connect(DB_NAME)
@@ -13,7 +37,6 @@ def get_connection():
     return conn
 
 def init_db():
-    """Создаёт таблицу напоминаний, если её нет"""
     conn = get_connection()
     conn.execute("""
         CREATE TABLE IF NOT EXISTS reminders (
@@ -27,6 +50,28 @@ def init_db():
     conn.commit()
     conn.close()
 
+def toggle_theme():
+    global bg_color, surface_color, text_color, accent_color, border_color, hover_color, accent_hover
+    
+    if current_theme == "dark":
+        colors = setup_theme("light")
+        theme_btn.config(text="🌙 Тёмная тема")
+    else:
+        colors = setup_theme("dark")
+        theme_btn.config(text="☀️ Светлая тема")
+    
+    bg_color, surface_color, text_color, accent_color, border_color, hover_color = colors
+    
+    root.configure(bg=bg_color)
+    header_frame.configure(bg=bg_color)
+    input_container.configure(bg=surface_color)
+    canvas.configure(bg=bg_color)
+    
+    text_desc.configure(bg=surface_color, fg=text_color, insertbackground=text_color, highlightbackground=border_color)
+    entry_title.configure(bg=surface_color, fg=text_color, highlightbackground=border_color)
+    entry_due.configure(bg=surface_color, fg=accent_color, highlightbackground=border_color)
+    
+    load_reminders()
 
 def add_reminder():
     title = entry_title.get().strip()
@@ -34,13 +79,16 @@ def add_reminder():
     due = entry_due.get().strip()
 
     if not title or not due:
-        messagebox.showwarning("Внимание", "Заполните название и время напоминания.")
+        messagebox.showwarning("Внимание", "Заполните название и выберите время.")
         return
 
     try:
-        datetime.strptime(due, "%Y-%m-%d %H:%M")
+        due_dt = datetime.strptime(due, "%Y-%m-%d %H:%M")
+        if due_dt < datetime.now():
+            messagebox.showerror("Ошибка", "Время не может быть в прошлом!")
+            return
     except ValueError:
-        messagebox.showerror("Ошибка", "Неверный формат времени.\nИспользуйте: ГГГГ-ММ-ДД ЧЧ:ММ")
+        messagebox.showerror("Ошибка", "Неверный формат времени.")
         return
 
     conn = get_connection()
@@ -49,15 +97,14 @@ def add_reminder():
     conn.commit()
     conn.close()
 
-
     entry_title.delete(0, tk.END)
     text_desc.delete("1.0", tk.END)
-    entry_due.delete(0, tk.END)
-
-    entry_due.insert(0, datetime.now().replace(hour=9, minute=0, second=0, microsecond=0).strftime("%Y-%m-%d %H:%M"))
     
+    tomorrow = (datetime.now() + timedelta(days=1)).replace(hour=9, minute=0)
+    entry_due.delete(0, tk.END)
+    entry_due.insert(0, tomorrow.strftime("%Y-%m-%d %H:%M"))
+
     load_reminders()
-    messagebox.showinfo("Успех", "Напоминание добавлено!")
 
 def mark_done(rid):
     conn = get_connection()
@@ -74,102 +121,143 @@ def delete_reminder(rid):
     load_reminders()
 
 def load_reminders():
-    """Обновляет список активных напоминаний"""
     for widget in scrollable_frame.winfo_children():
         widget.destroy()
 
     conn = get_connection()
-  
     reminders = conn.execute("SELECT * FROM reminders WHERE is_done = 0 ORDER BY due_time ASC").fetchall()
     conn.close()
 
     if not reminders:
-        ttk.Label(scrollable_frame, text="Нет активных напоминаний ", 
-                  font=("Segoe UI", 14), foreground="gray").pack(pady=30)
+        label = tk.Label(scrollable_frame, text="Нет активных напоминаний", 
+                  font=("Segoe UI", 14), fg=text_color, bg=bg_color)
+        label.pack(pady=40)
         return
 
     for rem in reminders:
-        card = ttk.Frame(scrollable_frame, padding=10, relief="solid", borderwidth=1)
-        card.pack(fill="x", pady=5)
+        create_task_row(scrollable_frame, rem)
 
-        ttk.Label(card, text=rem["title"], font=("Segoe UI", 13, "bold")).pack(anchor="w")
-        if rem["description"]:
-            ttk.Label(card, text=rem["description"], font=("Segoe UI", 11), wraplength=500).pack(anchor="w")
-        
-        time_label = ttk.Label(card, text=f" {rem['due_time']}", font=("Segoe UI", 11), foreground="#555")
-        time_label.pack(anchor="w", pady=(3, 5))
+def create_task_row(parent, reminder):
+    row_frame = tk.Frame(parent, bg=surface_color)
+    row_frame.pack(fill="x", padx=20, pady=3)
+    
+    def on_enter(e):
+        row_frame.configure(bg=hover_color)
+    def on_leave(e):
+        row_frame.configure(bg=surface_color)
+    
+    row_frame.bind("<Enter>", on_enter)
+    row_frame.bind("<Leave>", on_leave)
+    
+    checkbox = tk.Canvas(row_frame, width=20, height=20, bg=surface_color, highlightthickness=1, 
+                         highlightbackground=border_color, cursor="hand2")
+    checkbox.create_rectangle(2, 2, 18, 18, outline=border_color, width=2)
+    checkbox.pack(side="left", padx=(0, 12), pady=8)
+    checkbox.bind("<Button-1>", lambda e: mark_done(reminder["id"]))
+    
+    content_frame = tk.Frame(row_frame, bg=surface_color)
+    content_frame.pack(side="left", fill="x", expand=True, pady=8)
+    
+    title_label = tk.Label(content_frame, text=reminder["title"], 
+                           font=("Segoe UI", 12), fg=text_color, bg=surface_color,
+                           anchor="w")
+    title_label.pack(anchor="w")
+    
+    time_label = tk.Label(row_frame, text=reminder["due_time"], 
+                          font=("Segoe UI", 10), fg=accent_color, bg=surface_color)
+    time_label.pack(side="right", padx=10, pady=8)
+    
+    delete_btn = tk.Button(row_frame, text="✕", font=('Segoe UI', 9),
+                           bg=surface_color, fg=text_color,
+                           activebackground=hover_color, activeforeground=text_color,
+                           relief='flat', cursor="hand2",
+                           command=lambda r=reminder["id"]: delete_reminder(r))
+    delete_btn.pack(side="right", padx=5, pady=8)
 
-        btn_frame = ttk.Frame(card)
-        btn_frame.pack(anchor="e")
-
-       
-        ttk.Button(btn_frame, text=" Выполнено", command=lambda r=rem["id"]: mark_done(r)).pack(side="left", padx=5)
-        ttk.Button(btn_frame, text=" Удалить", command=lambda r=rem["id"]: delete_reminder(r)).pack(side="left", padx=5)
-
-def check_due_reminders():
-    """Периодически проверяет, не наступило ли время напоминания"""
-    now = datetime.now().strftime("%Y-%m-%d %H:%M")
-    conn = get_connection()
-    due = conn.execute("SELECT id, title FROM reminders WHERE due_time <= ? AND is_done = 0", (now,)).fetchall()
-    conn.close()
-
-    if due:
-        for rid, title in due:
-            messagebox.showinfo("Напоминание!", f" {title}\nВремя пришло!")
-            conn = get_connection()
-            conn.execute("UPDATE reminders SET is_done = 1 WHERE id = ?", (rid,))
-            conn.commit()
-            conn.close()
-        load_reminders()
-
-   
-    root.after(10000, check_due_reminders)
-
-
-root = tk.Tk()
-root.title("Напоминания")
-root.geometry("650x750")
-root.configure(bg="#F8F9FA")
-
-
+# Инициализация базы данных
 init_db()
 
+# Получаем цвета для тёмной темы (по умолчанию)
+bg_color, surface_color, text_color, accent_color, border_color, hover_color = setup_theme("dark")
 
-input_frame = ttk.Frame(root, padding=15)
-input_frame.pack(fill="x", padx=20, pady=10)
+# Создаём главное окно
+root = tk.Tk()
+root.title("Ежедневник")
+root.geometry("700x800")
+root.minsize(600, 600)
+root.configure(bg=bg_color)
 
-ttk.Label(input_frame, text="➕ Новое напоминание", font=("Segoe UI", 16, "bold")).pack(anchor="w", pady=5)
+# Заголовок с кнопкой темы
+header_frame = tk.Frame(root, bg=bg_color, padx=20, pady=10)
+header_frame.pack(fill="x")
 
-ttk.Label(input_frame, text="Название:").pack(anchor="w")
-entry_title = ttk.Entry(input_frame, font=("Segoe UI", 12))
+theme_btn = tk.Button(header_frame, text="☀️ Светлая тема", 
+                      font=('Segoe UI', 10),
+                      bg=surface_color, fg=text_color,
+                      activebackground=hover_color, activeforeground=text_color,
+                      relief='flat', cursor="hand2",
+                      command=toggle_theme)
+theme_btn.pack(side="right")
+
+# Контейнер для ввода нового напоминания
+input_container = tk.Frame(root, bg=surface_color, padx=30, pady=20)
+input_container.pack(fill="x", padx=30, pady=20)
+
+title_label = tk.Label(input_container, text="Новое напоминание", 
+                       font=('Segoe UI', 16, 'bold'),
+                       bg=surface_color, fg=text_color)
+title_label.pack(anchor="w", pady=(0, 15))
+
+name_lbl = tk.Label(input_container, text="Название:", 
+                    bg=surface_color, fg=text_color,
+                    font=('Segoe UI', 11))
+name_lbl.pack(anchor="w")
+entry_title = tk.Entry(input_container, font=("Segoe UI", 12), 
+                       bg=surface_color, fg=text_color,
+                       insertbackground=text_color,
+                       relief='solid', highlightthickness=1, highlightbackground=border_color)
 entry_title.pack(fill="x", pady=4)
 
-ttk.Label(input_frame, text="Описание (необязательно):").pack(anchor="w")
-text_desc = tk.Text(input_frame, height=3, font=("Segoe UI", 12), relief="solid", borderwidth=1)
+desc_lbl = tk.Label(input_container, text="Описание:", 
+                    bg=surface_color, fg=text_color,
+                    font=('Segoe UI', 11))
+desc_lbl.pack(anchor="w", pady=(10, 0))
+text_desc = tk.Text(input_container, height=3, font=("Segoe UI", 11), 
+                    bg=surface_color, fg=text_color, 
+                    insertbackground=text_color,
+                    relief='solid', highlightthickness=1, highlightbackground=border_color)
 text_desc.pack(fill="x", pady=4)
 
-ttk.Label(input_frame, text="Время (ГГГГ-ММ-ДД ЧЧ:ММ):").pack(anchor="w")
-entry_due = ttk.Entry(input_frame, font=("Segoe UI", 12))
+time_lbl = tk.Label(input_container, text="Время (ГГГГ-ММ-ДД ЧЧ:ММ):", 
+                    bg=surface_color, fg=text_color,
+                    font=('Segoe UI', 11))
+time_lbl.pack(anchor="w", pady=(10, 0))
+entry_due = tk.Entry(input_container, font=("Segoe UI", 12), 
+                     bg=surface_color, fg=accent_color,
+                     insertbackground=text_color,
+                     relief='solid', highlightthickness=1, highlightbackground=border_color)
 entry_due.pack(fill="x", pady=4)
 
-# Дефолтное время: завтра 9:00
-tomorrow = datetime.now().replace(hour=9, minute=0, second=0, microsecond=0)
-if tomorrow < datetime.now():
-    tomorrow = tomorrow.replace(day=tomorrow.day + 1)
-entry_due.insert(0, tomorrow.strftime("%Y-%m-%d %H:%M"))
+tomorrow_def = (datetime.now() + timedelta(days=1)).replace(hour=9, minute=0)
+entry_due.insert(0, tomorrow_def.strftime("%Y-%m-%d %H:%M"))
 
-ttk.Button(input_frame, text="Добавить", command=add_reminder).pack(fill="x", pady=10)
+add_btn = tk.Button(input_container, text="Добавить", 
+                    font=('Segoe UI', 10, 'bold'),
+                    bg=accent_color, fg='white',
+                    activebackground=accent_hover, activeforeground='white',
+                    relief='flat', cursor="hand2",
+                    command=add_reminder)
+add_btn.pack(fill="x", pady=15)
 
+# Список напоминаний
+list_frame = tk.Frame(root, bg=bg_color)
+list_frame.pack(fill="both", expand=True)
 
-list_frame = ttk.Frame(root, padding=15)
-list_frame.pack(fill="both", expand=True, padx=20, pady=5)
-
-ttk.Label(list_frame, text=" Мои напоминания", font=("Segoe UI", 14, "bold")).pack(anchor="w", pady=(0, 5))
-
-
-canvas = tk.Canvas(list_frame, bg="white", highlightthickness=0)
-scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=canvas.yview)
-scrollable_frame = ttk.Frame(canvas)
+canvas = tk.Canvas(list_frame, bg=bg_color, highlightthickness=0)
+scrollbar = tk.Scrollbar(list_frame, orient="vertical", command=canvas.yview,
+                         bg=surface_color, troughcolor=bg_color,
+                         activebackground=hover_color)
+scrollable_frame = tk.Frame(canvas, bg=bg_color)
 
 scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
 canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
@@ -178,9 +266,12 @@ canvas.configure(yscrollcommand=scrollbar.set)
 canvas.pack(side="left", fill="both", expand=True)
 scrollbar.pack(side="right", fill="y")
 
+def _on_mousewheel(event):
+    canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
+# Загружаем напоминания
 load_reminders()
 
-
-root.after(10000, check_due_reminders)
-
+# Запускаем главное окно
 root.mainloop()
